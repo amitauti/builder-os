@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>builder's os</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #f2ece0;
+    --surface:  #ebe3d3;
+    --border:   #d4c9b0;
+    --text:     #2c2416;
+    --muted:    #8a7560;
+    --accent:   #6b4f2a;
+    --success:  #4a7c59;
+    --danger:   #9b3a2a;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 20px 36px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .logo strong { color: var(--accent); font-weight: 600; }
+  .header-date {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    min-height: calc(100vh - 57px);
+  }
+
+  .col { padding: 36px; }
+  .col-right {
+    padding: 36px;
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .section { margin-bottom: 36px; }
+
+  .label {
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* project identity block */
+  .project-identity {
+    margin-bottom: 28px;
+  }
+  .project-name-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 6px;
+  }
+  #project-select {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid var(--border);
+    border-radius: 0;
+    padding: 2px 4px;
+    cursor: pointer;
+    appearance: auto;
+    flex: 1;
+    max-width: 340px;
+    font-family: inherit;
+  }
+  #project-select:focus { outline: none; border-bottom-color: var(--accent); }
+  .project-meta {
+    font-size: 12px;
+    color: var(--muted);
+    margin-left: 4px;
+  }
+  .status-badge {
+    display: inline-block;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+
+  /* new project */
+  #new-project-btn {
+    font-size: 11px;
+    color: var(--muted);
+    background: none;
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  #new-project-btn:hover { border-color: var(--accent); color: var(--accent); }
+  #new-project-row {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  #new-project-input {
+    font-size: 13px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px;
+    font-family: inherit;
+    border-radius: 0;
+    flex: 1;
+    max-width: 260px;
+  }
+  #new-project-input:focus { outline: none; border-color: var(--accent); }
+  #new-project-hint {
+    font-size: 11px;
+    color: var(--danger);
+    margin-top: 4px;
+    display: none;
+  }
+
+  /* buttons */
+  .btn-primary {
+    background: var(--accent);
+    color: #f2ece0;
+    border: none;
+    padding: 9px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    border-radius: 0;
+    letter-spacing: 0.02em;
+  }
+  .btn-primary:disabled { background: var(--muted); cursor: not-allowed; }
+  .btn-ghost {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+    border-radius: 0;
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* start session */
+  #start-btn { margin-top: 4px; }
+
+  /* briefing */
+  #briefing-section { display: none; }
+  #briefing-text {
+    font-family: ui-monospace, 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--text);
+    white-space: pre-wrap;
+    background: var(--surface);
+    border-left: 3px solid var(--accent);
+    padding: 16px 20px;
+    margin-bottom: 4px;
+  }
+
+  /* session log form */
+  .field { margin-bottom: 16px; }
+  .field-label {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+  }
+  .field input[type=text],
+  .field textarea,
+  .field select {
+    width: 100%;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 0;
+    padding: 8px 10px;
+    font-family: inherit;
+    font-size: 14px;
+  }
+  .field input:focus,
+  .field textarea:focus,
+  .field select:focus { outline: none; border-color: var(--accent); }
+  .field textarea { resize: vertical; min-height: 80px; }
+  .field-hint {
+    font-size: 11px;
+    color: var(--danger);
+    margin-top: 4px;
+    display: none;
+  }
+
+  .save-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 8px;
+  }
+  #save-success {
+    font-size: 12px;
+    color: var(--success);
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+
+  /* RIGHT COLUMN */
+
+  /* projects list */
+  .proj-list { width: 100%; }
+  .proj-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .proj-row:last-child { border-bottom: none; }
+  .proj-row:hover .proj-name { color: var(--accent); }
+  .proj-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .proj-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .proj-status {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+  .proj-ago {
+    font-size: 11px;
+    color: var(--muted);
+    min-width: 52px;
+    text-align: right;
+  }
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+  .dot-building { background: var(--accent); }
+  .dot-stalled  { background: var(--danger); }
+  .dot-paused   { background: var(--muted); }
+  .dot-done     { background: var(--success); }
+  .dot-unknown  { background: var(--border); }
+
+  /* ask */
+  .ask-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .ask-row input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    font-family: inherit;
+    font-size: 13px;
+    border-radius: 0;
+  }
+  .ask-row input:focus { outline: none; border-color: var(--accent); }
+  #ask-answer {
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--text);
+    white-space: pre-wrap;
+    background: var(--bg);
+    border-left: 2px solid var(--border);
+    padding: 12px 14px;
+    display: none;
+  }
+
+  /* backlog */
+  .backlog-input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .backlog-input-row input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    font-family: inherit;
+    font-size: 13px;
+    border-radius: 0;
+  }
+  .backlog-input-row input:focus { outline: none; border-color: var(--accent); }
+  .backlog-list { list-style: none; }
+  .backlog-list li {
+    display: flex;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .backlog-list li:last-child { border-bottom: none; }
+  .b-date { color: var(--muted); font-size: 11px; white-space: nowrap; padding-top: 2px; min-width: 44px; }
+  .b-idea { flex: 1; color: var(--text); }
+
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+    .col-right { border-left: none; border-top: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><strong>builder</strong>'s os</div>
+  <div class="header-date" id="header-date"></div>
+</header>
+
+<div class="layout">
+
+  <!-- LEFT: Session flow -->
+  <div class="col">
+
+    <div class="section">
+      <div class="label">Current Project</div>
+      <div class="project-identity">
+        <div class="project-name-row">
+          <select id="project-select"></select>
+          <button id="new-project-btn">+ new</button>
+        </div>
+        <div id="new-project-row">
+          <input type="text" id="new-project-input" placeholder="project-name">
+          <button class="btn-ghost" id="new-project-confirm">add</button>
+          <button class="btn-ghost" id="new-project-cancel">cancel</button>
+        </div>
+        <div id="new-project-hint"></div>
+        <div class="project-meta" id="project-meta"></div>
+      </div>
+      <button class="btn-primary" id="start-btn">→ start session</button>
+    </div>
+
+    <div class="section" id="briefing-section">
+      <div class="label">Briefing</div>
+      <div id="briefing-text"></div>
+    </div>
+
+    <div class="section">
+      <div class="label">Log Session</div>
+
+      <div class="field">
+        <div class="field-label">worked on</div>
+        <input type="text" id="worked_on" placeholder="what did you build or debug?">
+        <div class="field-hint" id="hint-worked">required</div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">learned</div>
+        <textarea id="learned" placeholder="what do you know now that you didn't before?"></textarea>
+        <div class="field-hint" id="hint-learned">required</div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">status</div>
+        <select id="status-select">
+          <option value="building">building</option>
+          <option value="stalled">stalled</option>
+          <option value="paused">paused</option>
+          <option value="done">done</option>
+        </select>
+      </div>
+
+      <div class="save-row">
+        <button class="btn-primary" id="save-btn">save session</button>
+        <span id="save-success">saved ✓</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: Projects, Ask, Backlog -->
+  <div class="col-right">
+
+    <div class="section">
+      <div class="label">All Projects</div>
+      <div class="proj-list" id="projects-list"></div>
+    </div>
+
+    <div class="section">
+      <div class="label">Ask Your Logs</div>
+      <div class="ask-row">
+        <input type="text" id="ask-input" placeholder="what did I learn about routing?">
+        <button class="btn-ghost" id="ask-btn">ask</button>
+      </div>
+      <div id="ask-answer"></div>
+    </div>
+
+    <div class="section">
+      <div class="label">Backlog</div>
+      <div class="backlog-input-row">
+        <input type="text" id="backlog-input" placeholder="capture an idea...">
+        <button class="btn-ghost" id="backlog-add">+</button>
+      </div>
+      <ul class="backlog-list" id="backlog-list"></ul>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:8100';
+
+// ── utils ─────────────────────────────────────────────────
+
+function formatHeaderDate() {
+  return new Date().toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+}
+
+function relativeDate(s) {
+  if (!s || s === 'never') return 'never';
+  const diff = Math.floor((Date.now() - new Date(s)) / 86400000);
+  if (diff === 0) return 'today';
+  if (diff === 1) return 'yesterday';
+  if (diff < 7)  return diff + 'd ago';
+  if (diff < 30) return Math.floor(diff/7) + 'w ago';
+  return s;
+}
+
+function dotClass(st) {
+  return { building:'dot-building', stalled:'dot-stalled', paused:'dot-paused', done:'dot-done' }[st] || 'dot-unknown';
+}
+
+function showSaved() {
+  const el = document.getElementById('save-success');
+  el.style.opacity = '1';
+  setTimeout(() => el.style.opacity = '0', 3000);
+}
+
+// ── load status ───────────────────────────────────────────
+
+let allProjects = [];
+
+async function loadStatus() {
+  const res = await fetch(`${API}/status`);
+  const data = await res.json();
+  allProjects = data.projects;
+
+  const dropdown = document.getElementById('project-select');
+  const current = dropdown.value;
+  dropdown.innerHTML = '';
+
+  const list = document.getElementById('projects-list');
+  list.innerHTML = '';
+
+  data.projects.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.name;
+    opt.textContent = p.name;
+    if (p.name === current) opt.selected = true;
+    dropdown.appendChild(opt);
+
+    const row = document.createElement('div');
+    row.className = 'proj-row';
+    row.innerHTML = `
+      <span class="proj-name">${p.name}</span>
+      <span class="proj-right">
+        <span class="proj-status"><span class="dot ${dotClass(p.status)}"></span>${p.status}</span>
+        <span class="proj-ago">${relativeDate(p.last_session)}</span>
+      </span>
+    `;
+    row.onclick = () => {
+      dropdown.value = p.name;
+      updateProjectMeta(p);
+      document.getElementById('briefing-section').style.display = 'none';
+    };
+    list.appendChild(row);
+  });
+
+  const sel = data.projects.find(p => p.name === dropdown.value);
+  if (sel) updateProjectMeta(sel);
+}
+
+function updateProjectMeta(p) {
+  const meta = document.getElementById('project-meta');
+  meta.textContent = p.last_session && p.last_session !== 'never'
+    ? 'last session ' + relativeDate(p.last_session)
+    : 'no sessions yet';
+}
+
+document.getElementById('project-select').onchange = function() {
+  const p = allProjects.find(x => x.name === this.value);
+  if (p) updateProjectMeta(p);
+  document.getElementById('briefing-section').style.display = 'none';
+};
+
+// ── new project ───────────────────────────────────────────
+
+document.getElementById('new-project-btn').onclick = () => {
+  document.getElementById('new-project-row').style.display = 'flex';
+  document.getElementById('new-project-btn').style.display = 'none';
+  document.getElementById('new-project-input').focus();
+};
+
+function cancelNew() {
+  document.getElementById('new-project-row').style.display = 'none';
+  document.getElementById('new-project-btn').style.display = 'inline-block';
+  document.getElementById('new-project-input').value = '';
+  document.getElementById('new-project-hint').style.display = 'none';
+}
+
+async function confirmNew() {
+  const name = document.getElementById('new-project-input').value.trim();
+  const hint = document.getElementById('new-project-hint');
+  if (!name) { hint.textContent = 'name required'; hint.style.display = 'block'; return; }
+
+  const res = await fetch(`${API}/project/new`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name })
+  });
+
+  if (res.status === 409) { hint.textContent = 'already exists'; hint.style.display = 'block'; return; }
+
+  const data = await res.json();
+  cancelNew();
+  await loadStatus();
+  document.getElementById('project-select').value = data.name;
+}
+
+document.getElementById('new-project-confirm').onclick = confirmNew;
+document.getElementById('new-project-cancel').onclick = cancelNew;
+document.getElementById('new-project-input').onkeydown = e => {
+  if (e.key === 'Enter') confirmNew();
+  if (e.key === 'Escape') cancelNew();
+};
+
+// ── start session ─────────────────────────────────────────
+
+document.getElementById('start-btn').onclick = async () => {
+  const project = document.getElementById('project-select').value;
+  if (!project) return;
+  const btn = document.getElementById('start-btn');
+  btn.disabled = true;
+  btn.textContent = 'loading...';
+  try {
+    const res = await fetch(`${API}/start/${project}`);
+    const data = await res.json();
+    document.getElementById('briefing-text').textContent = data.briefing;
+    document.getElementById('briefing-section').style.display = 'block';
+    btn.textContent = '↺ refresh briefing';
+  } catch(e) {
+    btn.textContent = '→ start session';
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+// ── save session ──────────────────────────────────────────
+
+document.getElementById('save-btn').onclick = async () => {
+  const project  = document.getElementById('project-select').value;
+  const worked_on = document.getElementById('worked_on').value.trim();
+  const learned   = document.getElementById('learned').value.trim();
+  const status    = document.getElementById('status-select').value;
+
+  const hw = document.getElementById('hint-worked');
+  const hl = document.getElementById('hint-learned');
+  hw.style.display = 'none';
+  hl.style.display = 'none';
+
+  let valid = true;
+  if (!worked_on) { hw.style.display = 'block'; valid = false; }
+  if (!learned)   { hl.style.display = 'block'; valid = false; }
+  if (!valid) return;
+
+  const res = await fetch(`${API}/end`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ project, worked_on, status, learned })
+  });
+
+  if (res.ok) {
+    document.getElementById('worked_on').value = '';
+    document.getElementById('learned').value = '';
+    showSaved();
+    loadStatus();
+  }
+};
+
+// ── ask ───────────────────────────────────────────────────
+
+async function submitAsk() {
+  const project  = document.getElementById('project-select').value;
+  const question = document.getElementById('ask-input').value.trim();
+  if (!question) return;
+
+  const btn = document.getElementById('ask-btn');
+  const box = document.getElementById('ask-answer');
+  btn.disabled = true;
+  btn.textContent = '...';
+  box.style.display = 'none';
+
+  try {
+    const res = await fetch(`${API}/ask`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project, question })
+    });
+    const data = await res.json();
+    box.textContent = data.answer;
+    box.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'ask';
+  }
+}
+
+document.getElementById('ask-btn').onclick = submitAsk;
+document.getElementById('ask-input').onkeydown = e => { if (e.key === 'Enter') submitAsk(); };
+
+// ── backlog ───────────────────────────────────────────────
+
+async function loadBacklog() {
+  const res = await fetch(`${API}/backlog`);
+  const data = await res.json();
+  renderBacklog(data.items);
+}
+
+function renderBacklog(items) {
+  const list = document.getElementById('backlog-list');
+  list.innerHTML = '';
+  items.slice().reverse().forEach(item => {
+    const match = item.match(/^\[(\d{4}-\d{2}-\d{2})\]\s(.+)$/);
+    const date = match ? new Date(match[1]).toLocaleDateString('en-GB', {day:'numeric', month:'short'}) : '';
+    const idea = match ? match[2] : item;
+    const li = document.createElement('li');
+    li.innerHTML = `<span class="b-date">${date}</span><span class="b-idea">${idea}</span>`;
+    list.appendChild(li);
+  });
+}
+
+async function addBacklog() {
+  const input = document.getElementById('backlog-input');
+  const idea = input.value.trim();
+  if (!idea) return;
+
+  const list = document.getElementById('backlog-list');
+  const li = document.createElement('li');
+  const today = new Date().toLocaleDateString('en-GB', {day:'numeric', month:'short'});
+  li.innerHTML = `<span class="b-date">${today}</span><span class="b-idea">${idea}</span>`;
+  list.insertBefore(li, list.firstChild);
+  input.value = '';
+
+  await fetch(`${API}/backlog`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idea })
+  });
+}
+
+document.getElementById('backlog-add').onclick = addBacklog;
+document.getElementById('backlog-input').onkeydown = e => { if (e.key === 'Enter') addBacklog(); };
+
+// ── init ──────────────────────────────────────────────────
+
+document.getElementById('header-date').textContent = formatHeaderDate();
+loadStatus();
+loadBacklog();
+</script>
+</body>
+</html>
