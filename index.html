@@ -344,6 +344,77 @@
   .b-date { color: var(--muted); font-size: 11px; white-space: nowrap; padding-top: 2px; min-width: 44px; }
   .b-idea { flex: 1; color: var(--text); }
 
+  /* streak */
+  #streak-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  #streak-count {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+  }
+  #streak-label {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+  .cal-day-header {
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: center;
+    padding-bottom: 4px;
+  }
+  .cal-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: var(--muted);
+    border: 1px solid transparent;
+    position: relative;
+  }
+  .cal-day.logged {
+    color: var(--accent);
+    font-weight: 700;
+    border-color: var(--border);
+    background: var(--surface);
+  }
+  .cal-day.logged::after {
+    content: '×';
+    position: absolute;
+    font-size: 18px;
+    font-weight: 300;
+    color: var(--accent);
+    opacity: 0.5;
+  }
+  .cal-day.today {
+    border-color: var(--accent);
+  }
+  .cal-day.empty {
+    border-color: transparent;
+  }
+  .cal-month-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-align: center;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
   @media (max-width: 860px) {
     .layout { grid-template-columns: 1fr; }
     .col-right { border-left: none; border-top: 1px solid var(--border); }
@@ -420,6 +491,15 @@
 
   <!-- RIGHT: Projects, Ask, Backlog -->
   <div class="col-right">
+
+    <div class="section">
+      <div class="label">14-Day Streak</div>
+      <div id="streak-header">
+        <span id="streak-count">—</span>
+        <span id="streak-label"></span>
+      </div>
+      <div id="streak-calendar"></div>
+    </div>
 
     <div class="section">
       <div class="label">All Projects</div>
@@ -551,20 +631,45 @@ function cancelNew() {
 async function confirmNew() {
   const name = document.getElementById('new-project-input').value.trim();
   const hint = document.getElementById('new-project-hint');
+  const confirmBtn = document.getElementById('new-project-confirm');
+
+  hint.style.display = 'none';
   if (!name) { hint.textContent = 'name required'; hint.style.display = 'block'; return; }
 
-  const res = await fetch(`${API}/project/new`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name })
-  });
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = '...';
 
-  if (res.status === 409) { hint.textContent = 'already exists'; hint.style.display = 'block'; return; }
+  try {
+    const res = await fetch(`${API}/project/new`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
 
-  const data = await res.json();
-  cancelNew();
-  await loadStatus();
-  document.getElementById('project-select').value = data.name;
+    if (res.status === 409) {
+      hint.textContent = 'already exists';
+      hint.style.display = 'block';
+      return;
+    }
+
+    if (!res.ok) {
+      hint.textContent = 'server error — is the server running?';
+      hint.style.display = 'block';
+      return;
+    }
+
+    const data = await res.json();
+    cancelNew();
+    await loadStatus();
+    document.getElementById('project-select').value = data.name;
+
+  } catch (e) {
+    hint.textContent = 'could not connect — is ./start.sh running?';
+    hint.style.display = 'block';
+  } finally {
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = 'add';
+  }
 }
 
 document.getElementById('new-project-confirm').onclick = confirmNew;
@@ -624,6 +729,7 @@ document.getElementById('save-btn').onclick = async () => {
     document.getElementById('learned').value = '';
     showSaved();
     loadStatus();
+    loadStreak();
   }
 };
 
@@ -701,11 +807,75 @@ async function addBacklog() {
 document.getElementById('backlog-add').onclick = addBacklog;
 document.getElementById('backlog-input').onkeydown = e => { if (e.key === 'Enter') addBacklog(); };
 
+// ── streak calendar ───────────────────────────────────────
+
+async function loadStreak() {
+  const res = await fetch(`${API}/streak`);
+  const data = await res.json();
+
+  // Update count
+  document.getElementById('streak-count').textContent = data.current_streak;
+  document.getElementById('streak-label').textContent =
+    data.current_streak === 1 ? 'day streak' : 'day streak · ' + data.total_days + ' total';
+
+  // Build calendar for current month
+  const loggedSet = new Set(data.logged_dates);
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+
+  const monthLabel = now.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const todayStr = now.toISOString().slice(0, 10);
+
+  const cal = document.getElementById('streak-calendar');
+  cal.innerHTML = '';
+
+  const monthEl = document.createElement('div');
+  monthEl.className = 'cal-month-label';
+  monthEl.textContent = monthLabel;
+  cal.appendChild(monthEl);
+
+  const grid = document.createElement('div');
+  grid.className = 'cal-grid';
+
+  // Day headers
+  ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(d => {
+    const h = document.createElement('div');
+    h.className = 'cal-day-header';
+    h.textContent = d;
+    grid.appendChild(h);
+  });
+
+  // Empty cells before first day
+  for (let i = 0; i < firstDay; i++) {
+    const empty = document.createElement('div');
+    empty.className = 'cal-day empty';
+    grid.appendChild(empty);
+  }
+
+  // Day cells
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const cell = document.createElement('div');
+    const classes = ['cal-day'];
+    if (loggedSet.has(dateStr)) classes.push('logged');
+    if (dateStr === todayStr) classes.push('today');
+    cell.className = classes.join(' ');
+    cell.textContent = d;
+    grid.appendChild(cell);
+  }
+
+  cal.appendChild(grid);
+}
+
 // ── init ──────────────────────────────────────────────────
 
 document.getElementById('header-date').textContent = formatHeaderDate();
 loadStatus();
 loadBacklog();
+loadStreak();
 </script>
 </body>
 </html>
