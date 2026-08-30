@@ -236,6 +236,19 @@ async def new_project(data: NewProject):
     name = data.name.strip().lower().replace(" ", "-")
     if not name:
         raise HTTPException(status_code=400, detail="Project name required")
+
+    # Reject path separators, traversal, and control characters so the name
+    # can never escape the vault directory.
+    if ".." in name or "/" in name or "\\" in name:
+        raise HTTPException(
+            status_code=400,
+            detail="Project name must not contain '..', '/', or '\\'",
+        )
+    if any(ord(c) < 32 for c in name):
+        raise HTTPException(
+            status_code=400, detail="Project name contains invalid characters"
+        )
+
     project_dir = VAULT / "projects" / name
     if project_dir.exists():
         raise HTTPException(status_code=409, detail="Project already exists")
