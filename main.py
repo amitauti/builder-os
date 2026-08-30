@@ -18,7 +18,15 @@ app.add_middleware(
 )
 
 # Load config
-with open("config.yml") as f:
+CONFIG_PATH = Path("config.yml")
+if not CONFIG_PATH.exists():
+    raise SystemExit(
+        "config.yml not found. Copy the example to get started:\n"
+        "    cp config.yml.example config.yml\n"
+        "then edit it to add your API key and set vault_path."
+    )
+
+with open(CONFIG_PATH) as f:
     config = yaml.safe_load(f)
 
 VAULT = Path(config["vault_path"])
@@ -56,6 +64,9 @@ def log_path(project: str) -> Path:
 def status_path(project: str) -> Path:
     return VAULT / "projects" / project / "status.md"
 
+def learnings_path() -> Path:
+    return VAULT / "knowledge" / "learnings.md"
+
 
 class EndSession(BaseModel):
     project: str
@@ -83,6 +94,15 @@ async def end_session(data: EndSession):
 
     with open(status_path(data.project), "w") as f:
         f.write(data.status)
+
+    # Aggregate learnings into a single cross-project file
+    learned = data.learned.strip()
+    if learned:
+        lpath = learnings_path()
+        lpath.parent.mkdir(parents=True, exist_ok=True)
+        line = f"- [{today}] ({data.project}) {learned}\n"
+        with open(lpath, "a") as f:
+            f.write(line)
 
     return {"ok": True, "project": data.project, "date": today}
 
@@ -113,6 +133,55 @@ async def get_status():
                 results.append({"name": name, "status": status, "last_session": last_session})
 
     return {"projects": results}
+
+
+@app.get("/streak")
+async def get_streak():
+    projects_dir = VAULT / "projects"
+    dates = set()
+
+    if projects_dir.exists():
+        for d in projects_dir.iterdir():
+            if not d.is_dir():
+                continue
+            l_path = d / "log.md"
+            if not l_path.exists():
+                continue
+            for line in l_path.read_text().splitlines():
+                if line.startswith("## "):
+                    dates.add(line.replace("## ", "").strip())
+
+    logged_dates = sorted(dates)
+
+    if not logged_dates:
+        return {"current_streak": 0, "total_days": 0, "logged_dates": []}
+
+    # Build a set of date objects for streak math
+    parsed = set()
+    for ds in logged_dates:
+        try:
+            parsed.add(datetime.strptime(ds, "%Y-%m-%d").date())
+        except ValueError:
+            continue
+
+    today = datetime.now().date()
+    # Anchor at today; if today has no entry, fall back to yesterday
+    # (don't count the streak broken until the day is over).
+    anchor = today
+    if anchor not in parsed:
+        anchor = today - timedelta(days=1)
+
+    current_streak = 0
+    cursor = anchor
+    while cursor in parsed:
+        current_streak += 1
+        cursor -= timedelta(days=1)
+
+    return {
+        "current_streak": current_streak,
+        "total_days": len(parsed),
+        "logged_dates": logged_dates,
+    }
 
 
 @app.get("/start/{project}")
@@ -179,6 +248,19 @@ async def new_project(data: NewProject):
     name = data.name.strip().lower().replace(" ", "-")
     if not name:
         raise HTTPException(status_code=400, detail="Project name required")
+
+    # Reject path separators, traversal, and control characters so the name
+    # can never escape the vault directory.
+    if ".." in name or "/" in name or "\\" in name:
+        raise HTTPException(
+            status_code=400,
+            detail="Project name must not contain '..', '/', or '\\'",
+        )
+    if any(ord(c) < 32 for c in name):
+        raise HTTPException(
+            status_code=400, detail="Project name contains invalid characters"
+        )
+
     project_dir = VAULT / "projects" / name
     if project_dir.exists():
         raise HTTPException(status_code=409, detail="Project already exists")
@@ -247,7 +329,7 @@ Be concise and direct. If the answer isn't in the logs, say so plainly."""
 
 @app.get("/")
 def root():
-    return FileResponse("index.html")
+    return FileResponse(Path(__file__).parent / "index.html")
 
 
 if __name__ == "__main__":

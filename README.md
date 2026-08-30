@@ -53,7 +53,7 @@ The UI is intentionally designed with a warm, parchment-like aesthetic to create
 llm_provider: "gemini"          # "gemini" or "claude"
 
 gemini_api_key: "YOUR_GEMINI_KEY_HERE"
-gemini_model: "gemini-2.0-flash"
+gemini_model: "gemini-3.6-flash"
 
 claude_api_key: "YOUR_CLAUDE_KEY_HERE"
 claude_model: "claude-3-5-sonnet-20240620"
@@ -68,7 +68,8 @@ vault_path: "/path/to/your/builder-os" # The absolute path to this directory
     ./start.sh
     ```
 2.  **Open the UI**:
-    Navigate to `http://localhost:8100` in your browser.
+    Navigate to `http://localhost:8100` in your browser (or `http://<server-ip>:8100` —
+    the server binds to `0.0.0.0` and the UI auto-targets whatever host it's served from).
 3.  **Stop the server**:
     ```bash
     ./stop.sh
