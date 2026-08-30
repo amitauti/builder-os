@@ -64,6 +64,9 @@ def log_path(project: str) -> Path:
 def status_path(project: str) -> Path:
     return VAULT / "projects" / project / "status.md"
 
+def learnings_path() -> Path:
+    return VAULT / "knowledge" / "learnings.md"
+
 
 class EndSession(BaseModel):
     project: str
@@ -91,6 +94,15 @@ async def end_session(data: EndSession):
 
     with open(status_path(data.project), "w") as f:
         f.write(data.status)
+
+    # Aggregate learnings into a single cross-project file
+    learned = data.learned.strip()
+    if learned:
+        lpath = learnings_path()
+        lpath.parent.mkdir(parents=True, exist_ok=True)
+        line = f"- [{today}] ({data.project}) {learned}\n"
+        with open(lpath, "a") as f:
+            f.write(line)
 
     return {"ok": True, "project": data.project, "date": today}
 
