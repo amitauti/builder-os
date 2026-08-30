@@ -329,7 +329,7 @@ Be concise and direct. If the answer isn't in the logs, say so plainly."""
 
 @app.get("/")
 def root():
-    return FileResponse("index.html")
+    return FileResponse(Path(__file__).parent / "index.html")
 
 
 if __name__ == "__main__":
