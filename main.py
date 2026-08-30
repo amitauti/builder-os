@@ -115,6 +115,55 @@ async def get_status():
     return {"projects": results}
 
 
+@app.get("/streak")
+async def get_streak():
+    projects_dir = VAULT / "projects"
+    dates = set()
+
+    if projects_dir.exists():
+        for d in projects_dir.iterdir():
+            if not d.is_dir():
+                continue
+            l_path = d / "log.md"
+            if not l_path.exists():
+                continue
+            for line in l_path.read_text().splitlines():
+                if line.startswith("## "):
+                    dates.add(line.replace("## ", "").strip())
+
+    logged_dates = sorted(dates)
+
+    if not logged_dates:
+        return {"current_streak": 0, "total_days": 0, "logged_dates": []}
+
+    # Build a set of date objects for streak math
+    parsed = set()
+    for ds in logged_dates:
+        try:
+            parsed.add(datetime.strptime(ds, "%Y-%m-%d").date())
+        except ValueError:
+            continue
+
+    today = datetime.now().date()
+    # Anchor at today; if today has no entry, fall back to yesterday
+    # (don't count the streak broken until the day is over).
+    anchor = today
+    if anchor not in parsed:
+        anchor = today - timedelta(days=1)
+
+    current_streak = 0
+    cursor = anchor
+    while cursor in parsed:
+        current_streak += 1
+        cursor -= timedelta(days=1)
+
+    return {
+        "current_streak": current_streak,
+        "total_days": len(parsed),
+        "logged_dates": logged_dates,
+    }
+
+
 @app.get("/start/{project}")
 async def start_session(project: str):
     l_path = log_path(project)
