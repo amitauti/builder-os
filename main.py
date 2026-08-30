@@ -18,7 +18,15 @@ app.add_middleware(
 )
 
 # Load config
-with open("config.yml") as f:
+CONFIG_PATH = Path("config.yml")
+if not CONFIG_PATH.exists():
+    raise SystemExit(
+        "config.yml not found. Copy the example to get started:\n"
+        "    cp config.yml.example config.yml\n"
+        "then edit it to add your API key and set vault_path."
+    )
+
+with open(CONFIG_PATH) as f:
     config = yaml.safe_load(f)
 
 VAULT = Path(config["vault_path"])
